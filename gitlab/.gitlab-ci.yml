@@ -1,0 +1,66 @@
+variables:
+  GIT_CLEAN_FLAGS: none                        # disable git clean
+  SERVICE_IP: "127.0.0.1"
+  SERVER_PASSWORD: "123456"
+  SERVER_WORK_PATH: "/home/work/app/marmot"
+stages:
+  - build
+  - delivery
+  - deploy
+  - clean
+job_build:
+  stage: build
+  only:
+    - master
+  tags:
+    - java
+  script:
+    - echo "---------------------------Begin to build---------------------------"
+    - pwd
+    - mvn clean package -DskipTests -T4 -Pdev -ff
+    - echo "---------------------------End of the build---------------------------"
+job_delivery:
+  stage: delivery
+  tags:
+    - java
+  script:
+    - echo "---------------------------Begin to delivery---------------------------"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/logs"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-gateway"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-facade-psm"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-security-oauth"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-service-psm"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-service-file"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-facade-file"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-facade-message"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-message-netty"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-message-sms"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "mkdir -p $SERVER_WORK_PATH/marmot-push-notice"
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-gateway/target/marmot-gateway.jar                                   root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-gateway
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-facade/marmot-facade-psm/target/marmot-facade-psm.jar               root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-facade-psm
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-security/marmot-security-oauth/target/marmot-security-oauth.jar     root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-security-oauth
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-service/marmot-service-psm/target/marmot-service-psm.jar            root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-service-psm
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-service/marmot-service-file/target/marmot-service-file.jar          root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-service-file
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-facade/marmot-facade-file/target/marmot-facade-file.jar             root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-facade-file
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-facade/marmot-facade-message/target/marmot-facade-message.jar       root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-facade-message
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-message/marmot-message-netty/target/marmot-message-netty.jar        root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-message-netty
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-message/marmot-message-sms/target/marmot-message-sms.jar            root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-message-sms
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/marmot-push/marmot-push-notice/target/marmot-push-notice.jar               root@$SERVICE_IP:$SERVER_WORK_PATH/marmot-push-notice
+    - sshpass -p $SERVER_PASSWORD scp $CI_PROJECT_DIR/deploy.sh                                                                  root@$SERVICE_IP:$SERVER_WORK_PATH
+    - echo "---------------------------End of the delivery---------------------------"
+job_deploy:
+  stage: deploy
+  tags:
+    - java
+  script:
+    - echo "---------------------------Begin to deploy---------------------------"
+    - sshpass -p $SERVER_PASSWORD ssh root@$SERVICE_IP "source /etc/profile && cd $SERVER_WORK_PATH && sh deploy.sh restart all"
+    - echo "---------------------------End of the deploy---------------------------"
+job_clean:
+  stage: clean
+  tags:
+    - java
+  script:
+    - echo "---------------------------Begin to clean---------------------------"
+    - cd $CI_PROJECT_DIR && mvn clean
+    - echo "---------------------------End of the clean---------------------------"
